@@ -1,28 +1,37 @@
+from os.path import join
+
+from ament_index_python.packages import get_package_share_directory
+
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    gps_imu_node = Node(
-        package='gps_imu_node',
-        executable='gps_imu_node',
-        name='gps_imu_node'
+    params = join(
+        get_package_share_directory('ekf_localizer'), 'params', 'ekf_localizer.yaml'
+    )
+
+    ekf_localizer_node = Node(
+        package='ekf_localizer',
+        executable='ekf_localizer_node',
+        name='ekf_localizer_node',
+        parameters=[params]
     )
 
     trajectory_server_node = Node(
         package='trajectory_server',
         executable='trajectory_server_node',
         name='trajectory_server_node',
-        namespace='oxts',
+        namespace='ekf',
         parameters=[{
             'target_frame_name': 'map',
-            'source_frame_name': 'oxts_link',
+            'source_frame_name': 'base_link',
             'trajectory_update_rate': 10.0,
             'trajectory_publish_rate': 10.0
         }]
     )
 
     return LaunchDescription([
-        gps_imu_node,
+        ekf_localizer_node,
         trajectory_server_node
     ])
