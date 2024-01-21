@@ -30,25 +30,18 @@ add_executable(ekf_localizer_node
   src/vel_measurement_model.cpp
   src/extended_kalman_filter.cpp)
 
-target_include_directories(ekf_localizer_node
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>)
+target_include_directories(ekf_localizer_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
 
-ament_target_dependencies(ekf_localizer_node
-  PUBLIC
-    rclcpp
-    sensor_msgs
-    geometry_msgs
-    tf2_ros
-    tf2
-    tf2_geometry_msgs
-    kalman_filter)
-
-target_link_libraries(ekf_localizer_node
-  PUBLIC
-    GeographicLib
-)
+ament_target_dependencies(ekf_localizer_node PUBLIC
+  rclcpp
+  sensor_msgs
+  geometry_msgs
+  tf2_ros
+  tf2
+  tf2_geometry_msgs
+  kalman_filter)
 
 target_compile_features(ekf_localizer_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
