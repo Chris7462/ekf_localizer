@@ -13,9 +13,6 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2/LinearMath/Transform.h>
 
-// geographicLib header
-#include <GeographicLib/LocalCartesian.hpp>
-
 // local header
 #include "ekf_localizer/system_model.hpp"
 #include "ekf_localizer/gps_measurement_model.hpp"
@@ -35,7 +32,6 @@ public:
 
 private:
   double freq_;
-  bool gps_init_;
 
   double alt_;  // for publish purpose
   double pitch_;  // for publish purpose
@@ -57,8 +53,6 @@ private:
   std::queue<sensor_msgs::msg::Imu::SharedPtr> imu_buff_;
   std::queue<sensor_msgs::msg::NavSatFix::SharedPtr> gps_buff_;
   std::queue<geometry_msgs::msg::TwistStamped::SharedPtr> vel_buff_;
-
-  GeographicLib::LocalCartesian geo_converter_;
 
   std::mutex mtx_;
 

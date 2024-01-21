@@ -13,18 +13,17 @@ namespace ekf_localizer
 {
 
 EkfLocalizer::EkfLocalizer()
-: Node("ekf_localizer_node"), freq_{40.0}, gps_init_{false}, alt_{0.0},
-  pitch_{0.0}, roll_{0.0}, odom_base_link_trans_(), imu_buff_(), gps_buff_(),
-  vel_buff_(), geo_converter_(), sys_(1.0 / freq_), imu_model_(), gps_model_(),
-  vel_model_(), ekf_()
+: Node("ekf_localizer_node"), freq_{40.0}, alt_{0.0}, pitch_{0.0}, roll_{0.0},
+  odom_base_link_trans_(), imu_buff_(), gps_buff_(), vel_buff_(), sys_(1.0 / freq_),
+  imu_model_(), gps_model_(), vel_model_(), ekf_()
 {
   rclcpp::QoS qos(10);
 
   imu_sub_ = this->create_subscription<sensor_msgs::msg::Imu>(
-    "kitti/oxts/imu", qos, std::bind(&EkfLocalizer::imu_callback, this, std::placeholders::_1));
+    "kitti/oxts/imu_rotated", qos, std::bind(&EkfLocalizer::imu_callback, this, std::placeholders::_1));
 
   gps_sub_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
-    "kitti/oxts/gps/fix", qos, std::bind(&EkfLocalizer::gps_callback, this, std::placeholders::_1));
+    "kitti/oxts/gps_shifted", qos, std::bind(&EkfLocalizer::gps_callback, this, std::placeholders::_1));
 
   vel_sub_ = this->create_subscription<geometry_msgs::msg::TwistStamped>(
     "kitti/oxts/gps/vel", qos, std::bind(&EkfLocalizer::vel_callback, this, std::placeholders::_1));
@@ -168,14 +167,11 @@ void EkfLocalizer::run_ekf()
       gps_buff_.pop();
       mtx_.unlock();
 
-      if (!gps_init_) { // use the first gps data as map (0,0,0)
-        geo_converter_.Reset(msg->latitude, msg->longitude, msg->altitude);
-        gps_init_ = true;
-      }
-
       // gps measurement
       GpsMeasurement z;
-      geo_converter_.Forward(msg->latitude, msg->longitude, msg->altitude, z.x(), z.y(), alt_);
+      z.x() = msg->latitude;
+      z.y() = msg->longitude;
+      alt_ = msg->altitude;
 
       // use the covariance that Gps provided.
       kalman::Covariance<GpsMeasurement> R = kalman::Covariance<GpsMeasurement>::Zero();
