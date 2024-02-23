@@ -18,20 +18,6 @@ def generate_launch_description():
         parameters=[params]
     )
 
-    trajectory_server_node = Node(
-        package='trajectory_server',
-        executable='trajectory_server_node',
-        name='trajectory_server_node',
-        namespace='ekf',
-        parameters=[{
-            'target_frame_name': 'map',
-            'source_frame_name': 'base_link',
-            'trajectory_update_rate': 10.0,
-            'trajectory_publish_rate': 10.0
-        }]
-    )
-
     return LaunchDescription([
-        ekf_localizer_node,
-        trajectory_server_node
+        ekf_localizer_node
     ])

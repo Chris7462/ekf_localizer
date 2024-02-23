@@ -33,10 +33,31 @@ def generate_launch_description():
                               'rviz', 'ekf_localizer.rviz')]
     )
 
-    gps_imu_launch = IncludeLaunchDescription(
+    gps_shift_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
-                FindPackageShare('gps_imu_node'), 'launch', 'gps_imu_launch.py'
+                FindPackageShare('gps_imu_node'), 'launch', 'gps_shift_launch.py'
+            ])
+        ])
+    )
+
+    trajectory_server_gps_node = Node(
+        package='trajectory_server',
+        executable='trajectory_server_node',
+        name='trajectory_server_node',
+        namespace='oxts',
+        parameters=[{
+            'target_frame_name': 'map',
+            'source_frame_name': 'oxts_link',
+            'trajectory_update_rate': 10.0,
+            'trajectory_publish_rate': 10.0
+        }]
+    )
+
+    imu_rotate_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            PathJoinSubstitution([
+                FindPackageShare('gps_imu_node'), 'launch', 'imu_rotate_launch.py'
             ])
         ])
     )
@@ -49,6 +70,19 @@ def generate_launch_description():
         ])
     )
 
+    trajectory_server_ekf_node = Node(
+        package='trajectory_server',
+        executable='trajectory_server_node',
+        name='trajectory_server_node',
+        namespace='ekf',
+        parameters=[{
+            'target_frame_name': 'map',
+            'source_frame_name': 'base_link',
+            'trajectory_update_rate': 10.0,
+            'trajectory_publish_rate': 10.0
+        }]
+    )
+
     return LaunchDescription([
         SetParameter(name='use_sim_time', value=True),
         bag_exec,
@@ -57,8 +91,11 @@ def generate_launch_description():
         TimerAction(
             period=1.0,  # delay these nodes for 1.0 seconds.
             actions=[
-                gps_imu_launch,
-                ekf_localizer_launch
+                gps_shift_launch,
+                trajectory_server_gps_node,
+                imu_rotate_launch,
+                ekf_localizer_launch,
+                trajectory_server_ekf_node
             ]
         )
     ])
