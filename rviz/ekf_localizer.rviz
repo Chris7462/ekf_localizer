@@ -128,13 +128,13 @@ Visualization Manager:
           Value: false
         cam3_link:
           Value: false
+        ekf_link:
+          Value: true
         gps_link:
           Value: false
         imu_link:
           Value: false
         map:
-          Value: true
-        odom:
           Value: true
         oxts_link:
           Value: true
@@ -147,19 +147,8 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          odom:
-            base_link:
-              gps_link:
-                {}
-              imu_link:
-                velo_link:
-                  cam0_link:
-                    cam1_link:
-                      {}
-                    cam2_link:
-                      {}
-                    cam3_link:
-                      {}
+          ekf_link:
+            {}
           oxts_link:
             {}
       Update Interval: 0
@@ -266,7 +255,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz_default_plugins/Orbit
-      Distance: 33.447288513183594
+      Distance: 54.107322692871094
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -281,10 +270,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.5603983998298645
-      Target Frame: base_link
+      Pitch: 0.8753980994224548
+      Target Frame: ekf_link
       Value: Orbit (rviz)
-      Yaw: 3.178575277328491
+      Yaw: 3.1403961181640625
     Saved: ~
 Window Geometry:
   Displays:

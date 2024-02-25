@@ -48,8 +48,6 @@ private:
 
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-  tf2::Transform odom_base_link_trans_;
-
   std::queue<sensor_msgs::msg::Imu::SharedPtr> imu_buff_;
   std::queue<sensor_msgs::msg::NavSatFix::SharedPtr> gps_buff_;
   std::queue<geometry_msgs::msg::TwistStamped::SharedPtr> vel_buff_;

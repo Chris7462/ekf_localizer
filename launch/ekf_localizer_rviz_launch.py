@@ -77,7 +77,7 @@ def generate_launch_description():
         namespace='ekf',
         parameters=[{
             'target_frame_name': 'map',
-            'source_frame_name': 'base_link',
+            'source_frame_name': 'ekf_link',
             'trajectory_update_rate': 10.0,
             'trajectory_publish_rate': 10.0
         }]
