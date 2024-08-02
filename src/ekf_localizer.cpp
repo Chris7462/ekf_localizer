@@ -14,7 +14,7 @@ namespace ekf_localizer
 
 EkfLocalizer::EkfLocalizer()
 : Node("ekf_localizer_node"), freq_{40.0}, alt_{0.0}, pitch_{0.0}, roll_{0.0},
-  odom_base_link_trans_(), imu_buff_(), gps_buff_(), vel_buff_(), sys_(1.0 / freq_),
+  imu_buff_(), gps_buff_(), vel_buff_(), sys_(1.0 / freq_),
   imu_model_(), gps_model_(), vel_model_(), ekf_()
 {
   rclcpp::QoS qos(10);
@@ -36,8 +36,6 @@ EkfLocalizer::EkfLocalizer()
     std::bind(&EkfLocalizer::run_ekf, this));
 
   tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-
-  odom_base_link_trans_.setIdentity();
 
   // Set system model covariance
   double eps_x = declare_parameter("eps.x", 0.0);
@@ -132,25 +130,6 @@ void EkfLocalizer::run_ekf()
       // check imu update successful?
       if (ekf_.update(imu_model_, z)) {
         ekf_.wrapStateYaw();
-
-        // publish odom to base link TF
-        tf2::Vector3 t_current(s.x(), s.y(), alt_);
-        tf2::Quaternion q_current;
-        q_current.setRPY(roll_, pitch_, s.theta());
-        q_current.normalize();
-
-        geometry_msgs::msg::TransformStamped odom_base_link_tf;
-        odom_base_link_tf.header.stamp = rclcpp::Node::now();
-        odom_base_link_tf.header.frame_id = "odom";
-        odom_base_link_tf.child_frame_id = "base_link";
-        odom_base_link_tf.transform.translation = tf2::toMsg(t_current);
-        odom_base_link_tf.transform.rotation = tf2::toMsg(q_current);
-
-        // send the transformation
-        tf_broadcaster_->sendTransform(odom_base_link_tf);
-
-        // save the odom->base transform
-        tf2::fromMsg(odom_base_link_tf.transform, odom_base_link_trans_);
       } else {
         RCLCPP_INFO(
           get_logger(), "Measurement IMU is over the threshold. Discard this measurement.");
@@ -191,25 +170,6 @@ void EkfLocalizer::run_ekf()
     }
   }
 
-  // publish map to odom TF
-  tf2::Vector3 t_current(s.x(), s.y(), alt_);
-  tf2::Quaternion q_current;
-  q_current.setRPY(roll_, pitch_, s.theta());
-  q_current.normalize();
-
-  tf2::Transform map_base_link_trans(q_current, t_current);
-  tf2::Transform map_odom_trans;
-  map_odom_trans.mult(map_base_link_trans, odom_base_link_trans_.inverse());
-
-  geometry_msgs::msg::TransformStamped map_odom_tf;
-  map_odom_tf.header.stamp = rclcpp::Node::now();
-  map_odom_tf.header.frame_id = "map";
-  map_odom_tf.child_frame_id = "odom";
-  map_odom_tf.transform = tf2::toMsg(map_odom_trans);
-
-  // send the transformation
-  tf_broadcaster_->sendTransform(map_odom_tf);
-
   // Run velocity update
   if (!vel_buff_.empty()) {
     mtx_.lock();
@@ -228,31 +188,29 @@ void EkfLocalizer::run_ekf()
       // check velocity update successful?
       if (ekf_.update(vel_model_, z)) {
         ekf_.wrapStateYaw();
-
-        // publish odom to base link TF
-        tf2::Vector3 t_current(s.x(), s.y(), alt_);
-        tf2::Quaternion q_current;
-        q_current.setRPY(roll_, pitch_, s.theta());
-        q_current.normalize();
-
-        geometry_msgs::msg::TransformStamped odom_base_link_tf;
-        odom_base_link_tf.header.stamp = rclcpp::Node::now();
-        odom_base_link_tf.header.frame_id = "odom";
-        odom_base_link_tf.child_frame_id = "base_link";
-        odom_base_link_tf.transform.translation = tf2::toMsg(t_current);
-        odom_base_link_tf.transform.rotation = tf2::toMsg(q_current);
-
-        // send the transformation
-        tf_broadcaster_->sendTransform(odom_base_link_tf);
-
-        // save the odom->base transform
-        tf2::fromMsg(odom_base_link_tf.transform, odom_base_link_trans_);
       } else {
         RCLCPP_INFO(
           get_logger(), "Measurement Velocity is over the threshold. Discard this measurement.");
       }
     }
   }
+
+  // publish map to odom TF
+  tf2::Vector3 t_current(s.x(), s.y(), alt_);
+  tf2::Quaternion q_current;
+  q_current.setRPY(roll_, pitch_, s.theta());
+  q_current.normalize();
+
+  tf2::Transform map_base_link_trans(q_current, t_current);
+
+  geometry_msgs::msg::TransformStamped map_base_link_tf;
+  map_base_link_tf.header.stamp = rclcpp::Node::now();
+  map_base_link_tf.header.frame_id = "map";
+  map_base_link_tf.child_frame_id = "base_link";
+  map_base_link_tf.transform = tf2::toMsg(map_base_link_trans);
+
+  // send the transformation
+  tf_broadcaster_->sendTransform(map_base_link_tf);
 }
 
 }  // namespace ekf_localizer
