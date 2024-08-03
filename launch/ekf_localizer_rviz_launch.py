@@ -88,13 +88,13 @@ def generate_launch_description():
         bag_exec,
         robot_state_publisher_launch,
         rviz_node,
+        gps_shift_launch,
+        imu_rotate_launch,
+        ekf_localizer_launch,
         TimerAction(
             period=1.0,  # delay these nodes for 1.0 seconds.
             actions=[
-                gps_shift_launch,
                 trajectory_server_gps_node,
-                imu_rotate_launch,
-                ekf_localizer_launch,
                 trajectory_server_ekf_node
             ]
         )
