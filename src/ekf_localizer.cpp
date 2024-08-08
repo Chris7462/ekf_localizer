@@ -23,7 +23,7 @@ EkfLocalizer::EkfLocalizer()
     "kitti/oxts/imu_rotated", qos,
     std::bind(&EkfLocalizer::imu_callback, this, std::placeholders::_1));
 
-  gps_sub_ = this->create_subscription<sensor_msgs::msg::NavSatFix>(
+  gps_sub_ = this->create_subscription<kitti_msgs::msg::GeoPlanePoint>(
     "kitti/oxts/gps_shifted", qos,
     std::bind(&EkfLocalizer::gps_callback, this, std::placeholders::_1));
 
@@ -86,7 +86,7 @@ void EkfLocalizer::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   imu_buff_.push(msg);
 }
 
-void EkfLocalizer::gps_callback(const sensor_msgs::msg::NavSatFix::SharedPtr msg)
+void EkfLocalizer::gps_callback(const kitti_msgs::msg::GeoPlanePoint::SharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(mtx_);
   gps_buff_.push(msg);
@@ -151,9 +151,9 @@ void EkfLocalizer::run_ekf()
 
       // gps measurement
       GpsMeasurement z;
-      z.x() = msg->latitude;
-      z.y() = msg->longitude;
-      alt_ = msg->altitude;
+      z.x() = msg->local_coordinate.x;
+      z.y() = msg->local_coordinate.y;
+      alt_ = msg->local_coordinate.z;
 
       // use the covariance that Gps provided.
       kalman::Covariance<GpsMeasurement> R = kalman::Covariance<GpsMeasurement>::Zero();
