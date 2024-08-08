@@ -21,6 +21,9 @@ find_package(kalman_filter REQUIRED)
 # system
 find_package(GeographicLib REQUIRED)
 
+# local
+find_package(kitti_msgs REQUIRED)
+
 add_executable(ekf_localizer_node
   src/ekf_localizer_node.cpp
   src/ekf_localizer.cpp
@@ -41,7 +44,8 @@ ament_target_dependencies(ekf_localizer_node PUBLIC
   tf2_ros
   tf2
   tf2_geometry_msgs
-  kalman_filter)
+  kalman_filter
+  kitti_msgs)
 
 target_compile_features(ekf_localizer_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 

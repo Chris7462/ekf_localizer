@@ -33,10 +33,10 @@ def generate_launch_description():
                               'rviz', 'ekf_localizer.rviz')]
     )
 
-    gps_shift_launch = IncludeLaunchDescription(
+    local_gps_imu_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             PathJoinSubstitution([
-                FindPackageShare('gps_imu_node'), 'launch', 'gps_shift_launch.py'
+                FindPackageShare('local_gps_imu'), 'launch', 'local_gps_imu_launch.py'
             ])
         ])
     )
@@ -48,18 +48,10 @@ def generate_launch_description():
         namespace='oxts',
         parameters=[{
             'target_frame_name': 'map',
-            'source_frame_name': 'oxts_link',
+            'source_frame_name': 'oxts_local',
             'trajectory_update_rate': 10.0,
             'trajectory_publish_rate': 10.0
         }]
-    )
-
-    imu_rotate_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            PathJoinSubstitution([
-                FindPackageShare('gps_imu_node'), 'launch', 'imu_rotate_launch.py'
-            ])
-        ])
     )
 
     ekf_localizer_launch = IncludeLaunchDescription(
@@ -88,8 +80,7 @@ def generate_launch_description():
         bag_exec,
         robot_state_publisher_launch,
         rviz_node,
-        gps_shift_launch,
-        imu_rotate_launch,
+        local_gps_imu_launch,
         ekf_localizer_launch,
         TimerAction(
             period=1.0,  # delay these nodes for 1.0 seconds.
