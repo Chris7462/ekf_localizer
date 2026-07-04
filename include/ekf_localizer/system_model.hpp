@@ -29,14 +29,16 @@ public:
 class SystemModel : public kalman::LinearizedSystemModel<State, Control, kalman::StandardBase>
 {
 public:
-  SystemModel(const double dt);
+  SystemModel();
   ~SystemModel() = default;
+
+  void set_dt(const double dt) {dt_ = dt;}
 
   State f(const State & x, const Control & u) const;
   void updateJacobians(const State & x, const Control & u);
 
 private:
-  double dt_;
+  double dt_{0.0};
 };
 
 } // namespace ekf_localizer

@@ -1,5 +1,13 @@
 ekf_localizer_node:
   ros__parameters:
+    # ROS parameters
+    imu_input_topic: "kitti/vehicle/imu_local"
+    gps_input_topic: "kitti/vehicle/gps_local"
+    vel_input_topic: "kitti/vehicle/velocity"
+    predict_frequency: 40.0  # Hz, EKF predict rate
+    publish_frequency: 40.0  # Hz, TF publish rate
+    queue_size: 10  # QoS depth
+
     init:
       x: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
       P: [100.0,   0.0, 0.0,  0.0, 0.0,  0.0,

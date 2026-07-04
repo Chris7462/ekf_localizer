@@ -5,8 +5,7 @@
 namespace ekf_localizer
 {
 
-SystemModel::SystemModel(const double dt)
-: dt_{dt}
+SystemModel::SystemModel()
 {
   F_.setIdentity();
   W_.setZero();

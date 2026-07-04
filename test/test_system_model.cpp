@@ -78,7 +78,8 @@ class SystemModelTest : public ::testing::Test
 public:
   void SetUp() override
   {
-    sys = std::make_unique<SystemModel>(dt);
+    sys = std::make_unique<SystemModel>();
+    sys->set_dt(dt);
     x.setOnes();
     u.setZero();
   }

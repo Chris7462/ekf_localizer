@@ -22,7 +22,8 @@ public:
     init_x.setOnes();
     init_P.setIdentity();
 
-    sys = std::make_unique<SystemModel>(dt);
+    sys = std::make_unique<SystemModel>();
+    sys->set_dt(dt);
 
     gps = std::make_unique<GpsMeasurementModel>();
     zg << 1.1, 1.1;
