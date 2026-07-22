@@ -146,7 +146,7 @@ void EkfLocalizer::initialize_ros_components()
     std::bind(&EkfLocalizer::imu_callback, this, std::placeholders::_1),
     sub_options);
 
-  gps_sub_ = this->create_subscription<kitti_msgs::msg::GeoPlanePoint>(
+  gps_sub_ = this->create_subscription<av_msgs::msg::GeoPlanePoint>(
     gps_input_topic_, qos,
     std::bind(&EkfLocalizer::gps_callback, this, std::placeholders::_1),
     sub_options);
@@ -191,7 +191,7 @@ void EkfLocalizer::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
   }
 }
 
-void EkfLocalizer::gps_callback(const kitti_msgs::msg::GeoPlanePoint::SharedPtr msg)
+void EkfLocalizer::gps_callback(const av_msgs::msg::GeoPlanePoint::SharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(mtx_);
 

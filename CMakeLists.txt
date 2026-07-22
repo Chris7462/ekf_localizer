@@ -24,7 +24,7 @@ list(APPEND CMAKE_MODULE_PATH /usr/share/cmake/geographiclib)
 find_package(GeographicLib REQUIRED)
 # local
 find_package(kalman_filter REQUIRED)
-find_package(kitti_msgs REQUIRED)
+find_package(av_msgs REQUIRED)
 
 add_executable(${PROJECT_NAME}_node
   src/ekf_localizer_node.cpp
@@ -48,7 +48,7 @@ target_link_libraries(${PROJECT_NAME}_node PRIVATE
   ${tf2_geometry_msgs_TARGETS}
   ${GeographicLib_LIBRARIES}
   ${kalman_filter_TARGETS}
-  ${kitti_msgs_TARGETS})
+  ${av_msgs_TARGETS})
 
 target_compile_features(${PROJECT_NAME}_node PRIVATE cxx_std_17)  # Require C99 and C++17
 

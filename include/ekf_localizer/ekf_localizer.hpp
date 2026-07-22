@@ -16,7 +16,7 @@
 #include <tf2/LinearMath/Transform.hpp>
 
 // local ros header
-#include "kitti_msgs/msg/geo_plane_point.hpp"
+#include "av_msgs/msg/geo_plane_point.hpp"
 
 // local header
 #include "ekf_localizer/system_model.hpp"
@@ -64,7 +64,7 @@ private:
    * @brief Callback for incoming GPS messages; runs an EKF update immediately
    * @param msg Incoming GPS message
    */
-  void gps_callback(const kitti_msgs::msg::GeoPlanePoint::SharedPtr msg);
+  void gps_callback(const av_msgs::msg::GeoPlanePoint::SharedPtr msg);
 
   /**
    * @brief Callback for incoming velocity messages; runs an EKF update immediately
@@ -95,7 +95,7 @@ private:
   double roll_; // for publish purpose
 
   rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
-  rclcpp::Subscription<kitti_msgs::msg::GeoPlanePoint>::SharedPtr gps_sub_;
+  rclcpp::Subscription<av_msgs::msg::GeoPlanePoint>::SharedPtr gps_sub_;
   rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_sub_;
   rclcpp::TimerBase::SharedPtr predict_timer_;
   rclcpp::TimerBase::SharedPtr publish_timer_;
