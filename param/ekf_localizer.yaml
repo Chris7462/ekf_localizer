@@ -1,15 +1,17 @@
 ekf_localizer_node:
   ros__parameters:
     # ROS parameters
-    imu_input_topic: "kitti/vehicle/imu_local"
-    gps_input_topic: "kitti/vehicle/gps_local"
+    imu_input_topic: "kitti/vehicle/imu"
+    gps_input_topic: "kitti/vehicle/gps"
     vel_input_topic: "kitti/vehicle/velocity"
     predict_frequency: 40.0  # Hz, EKF predict rate
     publish_frequency: 40.0  # Hz, TF publish rate
     queue_size: 10  # QoS depth
 
+    # Initial state (x, y, theta, nu, omega, alpha) is seeded automatically
+    # from the first GPS/IMU/Vel messages -- not configured here. Only the
+    # initial covariance is a tunable parameter.
     init:
-      x: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
       P: [100.0,   0.0, 0.0,  0.0, 0.0,  0.0,
             0.0, 100.0, 0.0,  0.0, 0.0,  0.0,
             0.0,   0.0, 1.0,  0.0, 0.0,  0.0,
@@ -24,8 +26,6 @@ ekf_localizer_node:
       omega: 0.2
       alpha: 0.1
     tau:
-      x: 0.2
-      y: 0.2
       theta: 0.1
       nu: 0.1
       omega: 0.05

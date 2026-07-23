@@ -17,7 +17,7 @@ EkfLocalizer::EkfLocalizer()
 : Node("ekf_localizer_node"), alt_{0.0}, pitch_{0.0}, roll_{0.0},
   sys_(), imu_model_(), gps_model_(), vel_model_(), ekf_()
 {
-  // Initialize and validate ROS2 parameters, and configure the EKF from them
+  // Initialize and validate ROS2 parameters, and configure the EKF covariance
   if (!initialize_parameters()) {
     RCLCPP_ERROR(get_logger(), "Failed to initialize parameters");
     rclcpp::shutdown();
@@ -37,9 +37,9 @@ bool EkfLocalizer::initialize_parameters()
   try {
     // ROS2 topic / timing / QoS parameters
     imu_input_topic_ = declare_parameter("imu_input_topic",
-      std::string("kitti/vehicle/imu_local"));
+      std::string("kitti/vehicle/imu"));
     gps_input_topic_ = declare_parameter("gps_input_topic",
-      std::string("kitti/vehicle/gps_local"));
+      std::string("kitti/vehicle/gps"));
     vel_input_topic_ = declare_parameter("vel_input_topic",
       std::string("kitti/vehicle/velocity"));
 
@@ -83,12 +83,7 @@ bool EkfLocalizer::initialize_parameters()
     RI.diagonal() << tau_theta, tau_omega, tau_alpha;
     imu_model_.setCovariance(RI);
 
-    // GPS measurement covariance
-    double tau_x = declare_parameter("tau.x", 0.0);
-    double tau_y = declare_parameter("tau.y", 0.0);
-    kalman::Covariance<GpsMeasurement> RG = kalman::Covariance<GpsMeasurement>::Zero();
-    RG.diagonal() << tau_x, tau_y;
-    gps_model_.setCovariance(RG);
+    // No need to setup GPS measurement covariance here as we have these values from the bag
 
     // Vel measurement covariance
     double tau_nu = declare_parameter("tau.nu", 0.0);
@@ -96,30 +91,26 @@ bool EkfLocalizer::initialize_parameters()
     RV.diagonal() << tau_nu;
     vel_model_.setCovariance(RV);
 
-    // Initial state
-    std::vector<double> init_x_vec = declare_parameter("init.x", std::vector<double>());
-    if (init_x_vec.size() != 6) {
-      RCLCPP_ERROR(get_logger(),
-        "Invalid init.x size: %ld (expected 6)", init_x_vec.size());
-      return false;
-    }
-    ekf_.init(State(init_x_vec.data()));
-
-    // Initial covariance
+    // Initial covariance. The initial *state* is no longer taken from
+    // parameters -- x/y come from the first GPS message, theta/omega/alpha
+    // from the first IMU message, and nu from the first Vel message (see
+    // try_initialize_ekf()).
     std::vector<double> init_P_vec = declare_parameter("init.P", std::vector<double>());
     if (init_P_vec.size() != 36) {
       RCLCPP_ERROR(get_logger(),
         "Invalid init.P size: %ld (expected 36)", init_P_vec.size());
       return false;
     }
-    ekf_.setCovariance(kalman::Covariance<State>(init_P_vec.data()));
+    init_P_ = kalman::Covariance<State>(init_P_vec.data());
 
-    RCLCPP_INFO(get_logger(), "Parameters and EKF initialized successfully");
+    RCLCPP_INFO(get_logger(), "Parameters initialized successfully");
     RCLCPP_INFO(get_logger(), "Input topics: %s, %s, %s",
       imu_input_topic_.c_str(), gps_input_topic_.c_str(), vel_input_topic_.c_str());
     RCLCPP_INFO(get_logger(),
       "Predict frequency: %.1f Hz, publish frequency: %.1f Hz, queue size: %d",
       predict_freq_, publish_freq_, queue_size_);
+    RCLCPP_INFO(get_logger(),
+      "EKF state will be initialized once first GPS, IMU, and Vel messages arrive");
 
     return true;
 
@@ -171,12 +162,49 @@ void EkfLocalizer::initialize_ros_components()
   RCLCPP_INFO(get_logger(), "ROS components initialized with separate callback groups");
 }
 
+void EkfLocalizer::try_initialize_ekf()
+{
+  // Caller (imu_callback / gps_callback / vel_callback) already holds mtx_.
+  if (ekf_initialized_ || !gps_received_ || !imu_received_ || !vel_received_) {
+    return;
+  }
+
+  State x0;
+  x0.x() = init_x_;
+  x0.y() = init_y_;
+  x0.theta() = init_theta_;
+  x0.nu() = init_nu_;
+  x0.omega() = init_omega_;
+  x0.alpha() = init_alpha_;
+
+  ekf_.init(x0);
+  ekf_.setCovariance(init_P_);
+  ekf_initialized_ = true;
+
+  RCLCPP_INFO(get_logger(),
+    "EKF initialized from first GPS/IMU/Vel messages: "
+    "x=%.2f y=%.2f theta=%.3f nu=%.2f omega=%.3f alpha=%.3f",
+    init_x_, init_y_, init_theta_, init_nu_, init_omega_, init_alpha_);
+}
+
 void EkfLocalizer::imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg)
 {
   std::lock_guard<std::mutex> lock(mtx_);
 
   double yaw;
   tf2::getEulerYPR(msg->orientation, yaw, pitch_, roll_);
+
+  if (!imu_received_) {
+    init_theta_ = ekf_.limitMeasurementYaw(yaw);
+    init_omega_ = msg->angular_velocity.z;
+    init_alpha_ = msg->linear_acceleration.x;
+    imu_received_ = true;
+    try_initialize_ekf();
+  }
+
+  if (!ekf_initialized_) {
+    return;
+  }
 
   ImuMeasurement z;
   z.theta() = ekf_.limitMeasurementYaw(yaw);
@@ -195,10 +223,22 @@ void EkfLocalizer::gps_callback(const av_msgs::msg::GeoPlanePoint::SharedPtr msg
 {
   std::lock_guard<std::mutex> lock(mtx_);
 
+  if (!gps_received_) {
+    init_x_ = msg->position.x;
+    init_y_ = msg->position.y;
+    init_alt_ = msg->position.z;
+    gps_received_ = true;
+    try_initialize_ekf();
+  }
+
+  if (!ekf_initialized_) {
+    return;
+  }
+
   GpsMeasurement z;
-  z.x() = msg->local_coordinate.x;
-  z.y() = msg->local_coordinate.y;
-  alt_ = msg->local_coordinate.z;
+  z.x() = msg->position.x;
+  z.y() = msg->position.y;
+  alt_ = msg->position.z;
 
   // Use the covariance that GPS provided.
   kalman::Covariance<GpsMeasurement> R = kalman::Covariance<GpsMeasurement>::Zero();
@@ -217,6 +257,16 @@ void EkfLocalizer::vel_callback(const geometry_msgs::msg::TwistStamped::SharedPt
 {
   std::lock_guard<std::mutex> lock(mtx_);
 
+  if (!vel_received_) {
+    init_nu_ = msg->twist.linear.x;
+    vel_received_ = true;
+    try_initialize_ekf();
+  }
+
+  if (!ekf_initialized_) {
+    return;
+  }
+
   VelMeasurement z;
   z.nu() = msg->twist.linear.x;
 
@@ -232,26 +282,46 @@ void EkfLocalizer::predict_callback()
 {
   std::lock_guard<std::mutex> lock(mtx_);
 
+  if (!ekf_initialized_) {
+    return;
+  }
+
   ekf_.predict(sys_);
   ekf_.wrapStateYaw();
 }
 
 void EkfLocalizer::publish_callback()
 {
+  bool initialized;
   State s;
   double alt;
   double pitch;
   double roll;
+  double init_x;
+  double init_y;
+  double init_alt;
 
   {
     std::lock_guard<std::mutex> lock(mtx_);
+    initialized = ekf_initialized_;
     s = ekf_.getState();
     alt = alt_;
     pitch = pitch_;
     roll = roll_;
+    init_x = init_x_;
+    init_y = init_y_;
+    init_alt = init_alt_;
   }
 
-  tf2::Vector3 t_current(s.x(), s.y(), alt);
+  if (!initialized) {
+    return;
+  }
+
+  // Publish relative to the vehicle's first fix, not raw UTM -- large per-frame
+  // TF values cause visible rendering jitter in rviz (see publish_callback()'s
+  // doc comment in the header for why). The EKF's actual state (s.x()/s.y())
+  // stays raw UTM; this offset is only applied here, at the publish boundary.
+  tf2::Vector3 t_current(s.x() - init_x, s.y() - init_y, alt - init_alt);
   tf2::Quaternion q_current;
   q_current.setRPY(roll, pitch, s.theta());
   q_current.normalize();

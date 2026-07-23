@@ -44,7 +44,7 @@ public:
 
 private:
   /**
-   * @brief Initialize node parameters and EKF state/covariance, with validation
+   * @brief Initialize node parameters and EKF covariance, with validation
    * @return true if initialization successful, false otherwise
    */
   bool initialize_parameters();
@@ -78,9 +78,23 @@ private:
   void predict_callback();
 
   /**
-   * @brief Timer callback that publishes the current EKF state as the map->base_link TF
+   * @brief Timer callback that publishes the current EKF state as the map->base_link TF.
+   * The EKF state itself is raw UTM, but the published transform is offset by the
+   * vehicle's first fix (init_x_/init_y_/init_alt_) so the moving TF/Path data stays
+   * small-magnitude -- large per-frame TF values cause visible rendering jitter in
+   * rviz (Ogre's per-frame scene nodes are float32), even when the net composed
+   * transform would be small in double precision.
    */
   void publish_callback();
+
+  /**
+   * @brief Initialize the EKF state/covariance once a first GPS, IMU, and Vel
+   * message have all been received (x/y from GPS, theta/omega/alpha from IMU,
+   * nu from Vel). The EKF state itself remains raw UTM -- see publish_callback()
+   * for where the display offset is applied. No-op if already initialized or if
+   * any message is still missing. Caller must hold mtx_.
+   */
+  void try_initialize_ekf();
 
   // ROS2 topic / timing / QoS parameters
   std::string imu_input_topic_;
@@ -113,6 +127,23 @@ private:
   GpsMeasurementModel gps_model_;
   VelMeasurementModel vel_model_;
   EKF ekf_;
+
+  // EKF initialization state. GPS reports raw UTM coordinates and the EKF
+  // state stays in raw UTM throughout -- init_x_/init_y_/init_alt_ are kept
+  // around after initialization purely to offset the *published* map->base_link
+  // transform back to small numbers (see publish_callback()).
+  bool gps_received_ = false;
+  bool imu_received_ = false;
+  bool vel_received_ = false;
+  bool ekf_initialized_ = false;
+  double init_x_ = 0.0;
+  double init_y_ = 0.0;
+  double init_alt_ = 0.0;
+  double init_theta_ = 0.0;
+  double init_nu_ = 0.0;
+  double init_omega_ = 0.0;
+  double init_alpha_ = 0.0;
+  kalman::Covariance<State> init_P_;
 };
 
 } // namespace ekf_localizer
